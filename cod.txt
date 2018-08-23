@@ -1,0 +1,239 @@
+
+#include <SoftwareSerial.h>
+#include <NewPing.h>
+#define TRIGGER_PIN  13  
+#define ECHO_PIN     12  
+#define MAX_DISTANCE 500
+#include <Wire.h>
+#include "RTClib.h"
+
+SoftwareSerial gprsSerial(7, 8);
+NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE); 
+RTC_DS1307 rtc;    // Creeare obiect rtc pentru ceasul in timp real
+
+
+
+void setup()
+{
+Serial.begin(19200); 
+gprsSerial.begin(19200);
+
+
+#ifdef AVR
+  Wire.begin();
+#else
+  Wire1.begin(); // initializare conexiune cu interfata ceas RTC
+#endif
+
+  rtc.begin(); // inceput rtc
+
+//Pentru ajustare ceas dupa ora sistemului se scot comentariile de pe linia de mai jos.
+   //  rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+//Pentru ajustare ceas dupa parametrii introdusi se scot comentariile de pe linia de mai jos si se modifica parametrii.
+   //rtc.adjust(DateTime(2017, 6, 4, 23, 12, 0));
+
+  Serial.println("Initializare sistem NEXTFLOOD GSM+GPRS+RTC");
+  //delay(2000);
+  gprsSerial.flush();
+  Serial.flush();
+
+
+  // comanda GPRS  
+  gprsSerial.println("AT+CGATT?");
+  delay(1000);
+  toSerial();
+
+
+  // setari retea
+  gprsSerial.println("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"");
+  delay(1000);
+  toSerial();
+
+//setari accesspoint pentru internet
+  gprsSerial.println("AT+SAPBR=3,1,\"APN\",\"net\"");
+  delay(1000);
+  toSerial();
+
+
+//Gprs
+  gprsSerial.println("AT+CGATT=1");
+  delay(100);
+  toSerial();
+  
+
+  
+
+  //setari GPRS
+  gprsSerial.println("AT+SAPBR=1,1");
+  delay(2000);
+  toSerial();
+
+  
+}
+
+void loop()
+{
+ // initializare serviciu http
+   gprsSerial.println("AT+HTTPINIT");
+   delay(200); 
+   toSerial();
+
+     DateTime now = rtc.now();  // citire informatii de la Real time clock
+
+//declaratii variabile pentru data si timp.
+String anul=String(now.year(),DEC);
+String luna=String(now.month(),DEC);
+String ziua=String(now.day(),DEC);
+String ora=String(now.hour(),DEC);
+String minutul=String(now.minute(),DEC);
+String secunda=String(now.second(),DEC);
+String dataValue=anul+"-"+luna+"-"+ziua;
+String oraValue=ora+minutul+secunda+".00000";
+
+//afisare data pentru debug
+Serial.println(dataValue);
+//afisare ora pentru debug
+Serial.println(oraValue);
+  delay(3000);
+
+//MASURARE NIVEL//
+Serial.print("Nivel NEXTFLOOD: ");
+  //cota senzor - se introduce in centimetri, elevatii in sistem WGS
+  int cota_senzor_nivel = 8900;
+  //cota talveg in sectiunea de masurare - se introduce in centimetri, elevatii in sistem WGS
+  int cota_talveg = 8300;
+  //setez factorul senzor-valabil doar pentru reproducerea la scara a modelului.
+  int factor_senzor = 10;
+  //calculez distanta de la senzor la oglinda apei
+  int distanta = sonar.ping_cm()*factor_senzor;
+  //calculez cota la care se afla oglinda apei - in centimetri
+  int cota_nivel_apa = (cota_senzor_nivel-distanta);
+  //calculez adancimea apei (nivelul) in centimetri
+  int nivel = cota_senzor_nivel-cota_talveg-distanta-170;
+
+  Serial.println(nivel);
+  Serial.println("cm");
+   Serial.println(cota_nivel_apa);
+  Serial.println("cm");
+   
+ 
+
+//Formare parametrii pentru metoda GET a scriptului DBWrite.php de pe server
+String stringOne = "AT+HTTPPARA=\"URL\""  ;  
+
+String stringTwo = ",";
+
+String stringThree = "\"http://www.nextflood.tk/DBWrite.php?data=";
+
+String stringFour = "&ora=";
+
+String stringFive = "&nivel=";
+
+String stringSix = "\"";
+
+  String stringSeven = stringOne + stringTwo + stringThree + dataValue + stringFour + oraValue + stringFive + nivel + stringSix;
+
+  
+  Serial.println(stringSeven);
+
+//TRIMITERE REQEST HTTP parametrizat cu datele care se scriu in baza de date//
+gprsSerial.println(stringSeven);
+
+   delay(1000);
+   toSerial();
+
+
+   gprsSerial.println("AT+HTTPACTION=0");
+   delay(1000);
+   toSerial();
+
+   
+
+String destinationNumber = "+40758108756";
+String text_atentionare1="Atentie! Nivelul pe Bega este: ";
+String text_atentionare2=". Urmariti evolutia urmatoare";
+String text_atentionare3=". Evacuati casa si mergeti pe teren inalt";
+String text_atentionare4=". Sunteti in pericol. Asteptati interventia!";
+String cm="cm";
+
+if (nivel > 200 && nivel < 300)
+{
+String SMStext = text_atentionare1+nivel+cm+text_atentionare2;
+gprsSerial.begin(19200); 
+delay(100);
+gprsSerial.print("AT+CMGF=1\r");
+delay(100);
+gprsSerial.println("AT + CMGS = \"" + destinationNumber +"\"");
+delay(100);
+gprsSerial.print(SMStext);
+delay(100);
+gprsSerial.write((char)26); //ctrl+z
+  delay(100);
+ 
+}  else
+  
+  if (nivel > 300 && nivel < 400)
+{
+String SMStext = text_atentionare1+nivel+cm+text_atentionare3;
+gprsSerial.begin(19200); 
+delay(100);
+gprsSerial.print("AT+CMGF=1\r");
+delay(100);
+gprsSerial.println("AT + CMGS = \"" + destinationNumber +"\"");
+delay(100);
+gprsSerial.print(SMStext);
+delay(100);
+gprsSerial.write((char)26); 
+  delay(100);
+  
+ 
+}  else
+  
+    if (nivel > 400 && nivel < 500)
+{
+String SMStext = text_atentionare1+nivel+cm+text_atentionare4;
+gprsSerial.begin(19200); 
+delay(100);
+gprsSerial.print("AT+CMGF=1\r");
+delay(100);
+gprsSerial.println("AT + CMGS = \"" + destinationNumber +"\"");
+delay(100);
+gprsSerial.print(SMStext);
+delay(100);
+gprsSerial.write((char)26); 
+  delay(100);
+  
+}else
+  
+    if (nivel > 500)
+{
+String SMStext = text_atentionare1+nivel+cm+text_atentionare4;
+gprsSerial.begin(19200); 
+delay(100);
+gprsSerial.print("AT+CMGF=1\r");
+delay(100);
+gprsSerial.println("AT + CMGS = \"" + destinationNumber +"\"");
+delay(100);
+gprsSerial.print(SMStext);
+delay(100);
+gprsSerial.write((char)26); 
+  delay(100);
+  
+}
+
+
+
+
+
+
+
+}
+
+void toSerial()
+{
+  while(gprsSerial.available()!=0)
+  {
+    Serial.write(gprsSerial.read());
+  }
+  
+}
