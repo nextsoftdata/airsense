@@ -152,53 +152,15 @@ Serial.println(dataValue);
 Serial.println(oraValue);
   delay(3000);
 
-
-   
  
-
-//Formare parametrii pentru metoda GET a scriptului ScriereInBazaDeDate.php de pe server
-String stringOne = "AT+HTTPPARA=\"URL\""  ;  
-
-String stringTwo = ",";
-
-String stringThree = "\"http://www.airsense.ml/ScriereInBazaDeDate.php?data=";
-
-String stringFour = "&ora=";
-
-String stringFive = "&nivel=";
-
-String stringSix = "\"";
-
-  String stringSeven = stringOne + stringTwo + stringThree + dataValue + stringFour + oraValue + stringFive + stringSix;
-
-  
-  Serial.println(stringSeven);
-
-//TRIMITERE REQEST HTTP parametrizat cu datele care se scriu in baza de date//
-gprsSerial.println(stringSeven);
-
-   delay(1000);
-   toSerial();
-
-
-   gprsSerial.println("AT+HTTPACTION=0");
-   delay(1000);
-   toSerial();
-
-
-
-String destinationNumber = "+40758108756";
-String text_atentionare1="Atentie! Nivelul pe Bega este: ";
-String text_atentionare2=". Urmariti evolutia urmatoare";
-String text_atentionare3=". Evacuati casa si mergeti pe teren inalt";
-String text_atentionare4=". Sunteti in pericol. Asteptati interventia!";
-String cm="cm";
-
-
+ float umiditatea_curenta = bme.readHumidity();
+      float presiunea_curenta = bme.readPressure();
+  float temperatura_curenta = bme.temperature;
+ float rezistenta_curenta = bme.gas_resistance;
 
 
   //Calculate humidity contribution to IAQ index
-  float umiditatea_curenta = bme.readHumidity();
+
   if (umiditatea_curenta >= 38 && umiditatea_curenta <= 42)
     indice_umiditate = 0.25*100; // Humidity +/-5% around optimum 
   else
@@ -234,6 +196,43 @@ String cm="cm";
 
 
 
+//Formare parametrii pentru metoda GET a scriptului ScriereInBazaDeDate.php de pe server
+String string1 = "AT+HTTPPARA=\"URL\""  ;  
+String string2 = ",";
+String string3 = "\"http://www.airsense.ml/ScriereInBazaDeDate.php?data=";
+String string4 = "&ora=";
+String string5 = "&temperatura=";
+String string6 = "&presiune=";
+String string7 = "&umiditate=";
+String string8 = "&rezistenta=";
+String string9 = "&calitateaer=";
+String string10 = "\"";
+
+  String string11 = string1 + string2 + string3 + dataValue + string4 + oraValue + string5 + temperatura_curenta + string6 + presiunea_curenta + string7 + umiditatea_curenta+ string8 + rezistenta_curenta+ string9 + calitate_aer + string10;
+
+  
+  Serial.println(string11);
+
+//TRIMITERE REQEST HTTP parametrizat cu datele care se scriu in baza de date//
+gprsSerial.println(string11);
+
+   delay(1000);
+   toSerial();
+
+
+   gprsSerial.println("AT+HTTPACTION=0");
+   delay(1000);
+   toSerial();
+
+
+
+String destinationNumber = "+40758108756";
+String text_atentionare1="Atentie! Nivelul pe Bega este: ";
+String text_atentionare2=". Urmariti evolutia urmatoare";
+String text_atentionare3=". Evacuati casa si mergeti pe teren inalt";
+String text_atentionare4=". Sunteti in pericol. Asteptati interventia!";
+String cm="cm";
+
 }
 
 void toSerial()
@@ -265,7 +264,7 @@ String CalculeazaCalitateAer(float score){
 
 
 void CalculeazaReferintaAer(){
-  // Now run the sensor for a burn-in period, then use combination of relative humidity and gas resistance to estimate indoor air quality as a percentage.
+  // Initializare si inca, then use combination of relative humidity and gas resistance to estimate indoor air quality as a percentage.
   Serial.println("Citire valoare de referinta noua pentru aer");
   int citiriSenzor = 10;
   for (int i = 0; i <= citiriSenzor; i++){ // read gas for 10 x 0.150mS = 1.5secs
