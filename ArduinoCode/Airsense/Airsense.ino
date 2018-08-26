@@ -24,16 +24,45 @@ int   CalculeazaReferintaAer_index = 0;
 Adafruit_BME680 bme; // I2C
 
 void setup(){
-  
-  Serial.begin(115200);
+
+ Serial.begin(19200);
+
+
+
+
+
+gprsSerial.begin(19200);
+gprsSerial.flush();
+// comanda GPRS  
+  gprsSerial.println("AT+CGATT?");
+  delay(1000);
+  toSerial();
+  // setari retea
+  gprsSerial.println("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"");
+  delay(1000);
+  toSerial();
+//setari accesspoint pentru internet
+  gprsSerial.println("AT+SAPBR=3,1,\"APN\",\"net\"");
+  delay(1000);
+  toSerial();
+//Gprs
+  gprsSerial.println("AT+CGATT=1");
+  delay(100);
+  toSerial();
+    //setari GPRS
+  gprsSerial.println("AT+SAPBR=1,1");
+  delay(2000);
+  toSerial();
+
   while (!Serial);
   Serial.println(F("BME680 test"));
-
-  Wire.begin();
+  
+    Wire.begin();
   if (!bme.begin()) {
     Serial.println("Could not find a valid BME680 sensor, check wiring!");
     while (1);
   } else Serial.println("Found a sensor");
+ 
 
   // Setare oversampling senzor si initializare filtru
   bme.setTemperatureOversampling(BME680_OS_8X);
@@ -136,6 +165,70 @@ indice_aer = (((referinta_aer + (3*bme.gas_resistance))/4) /200000)*75;
   Serial.println(CalculeazaCalitateAer(calitate_aer));
   Serial.println("------------------------------------------------");
   delay(2000);
+
+    delay(2000);
+     DateTime now = rtc.now();  // citire informatii de la Real time clock
+
+//declaratii variabile pentru data si timp.
+String anul=String(now.year(),DEC);
+String luna=String(now.month(),DEC);
+String ziua=String(now.day(),DEC);
+String ora=String(now.hour(),DEC);
+String minutul=String(now.minute(),DEC);
+String secunda=String(now.second(),DEC);
+String dataValue=anul+"-"+luna+"-"+ziua;
+String oraValue=ora+minutul+secunda+".00000";
+
+//afisare data pentru debug
+Serial.println(dataValue);
+//afisare ora pentru debug
+Serial.println(oraValue);
+  //delay(3000);
+
+
+  //Formare parametrii pentru metoda GET a scriptului ScriereInBazaDeDate.php de pe server
+String string1 = "AT+HTTPPARA=\"URL\""  ;  
+String string2 = ",";
+String string3 = "\"http://www.airsense.ml/ScriereInBazaDeDate.php?data=";
+String string4 = "&ora=";
+String string5 = "&temperatura=";
+String string6 = "&presiune=";
+String string7 = "&umiditate=";
+String string8 = "&rezistenta=";
+String string9 = "&calitateaer=";
+dataValue=1;
+oraValue=2;
+temperatura_curenta=3;
+presiunea_curenta=4;
+umiditatea_curenta=6;
+rezistenta_curenta=7;
+calitate_aer=8;
+
+String string10 = "\"";
+String string11 = string1 + string2 + string3 + dataValue + string4 + oraValue + string5 + temperatura_curenta + string6 + presiunea_curenta + string7 + umiditatea_curenta+ string8 + rezistenta_curenta+ string9 + calitate_aer + string10;
+  delay(1000);
+Serial.println(string11);
+
+ delay(3000);
+//TRIMITERE REQEST HTTP parametrizat cu datele care se scriu in baza de date//
+gprsSerial.println(string11);
+   delay(1000);
+   toSerial();
+   
+   gprsSerial.println("AT+HTTPACTION=0");
+   delay(1000);
+   toSerial();
+
+  
+  }
+
+
+  void toSerial()
+{
+  while(gprsSerial.available()!=0)
+  {
+    Serial.write(gprsSerial.read());
+  }
 
 
   
