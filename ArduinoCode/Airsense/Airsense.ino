@@ -16,7 +16,7 @@ RTC_DS1307 rtc;    // Creeare obiect rtc pentru ceasul in timp real
 float pondere_umiditate = 0.25; // so hum effect is 25% of the total air quality score
 float pondere_aer = 0.75; // so gas effect is 75% of the total air quality score
 float indice_umiditate, indice_aer;
-float referinta_aer=150000;
+float referinta_aer;
 float referinta_umiditate = 40;
 int   CalculeazaReferintaAer_index = 0;
 
@@ -98,7 +98,7 @@ void setup(){
 void CalculeazaReferintaAer(){
   // Initializare si inca, then use combination of relative humidity and gas resistance to estimate indoor air quality as a percentage.
   Serial.println("Citire valoare de referinta noua pentru aer");
-  int citiriSenzor = 10;
+  int citiriSenzor = 20;
   for (int i = 0; i <= citiriSenzor; i++){ // read gas for 10 x 0.150mS = 1.5secs
     referinta_aer += bme.readGas();
   }
@@ -179,11 +179,11 @@ Serial.println(oraValue);
  float rezistenta_curenta = bme.gas_resistance;
 
   //Calculate humidity contribution to IAQ index
-  if (umiditatea_curenta >= 38 && umiditatea_curenta <= 42)
+  if (umiditatea_curenta >= 35 && umiditatea_curenta <= 48)
     indice_umiditate = 0.25*100; // Humidity +/-5% around optimum 
   else
   { //sub-optimal
-    if (umiditatea_curenta < 38) 
+    if (umiditatea_curenta < 35) 
       indice_umiditate = 0.25/referinta_umiditate*umiditatea_curenta*100;
     else
     {
@@ -192,22 +192,15 @@ Serial.println(oraValue);
   }
   
   //Calculeaza contributia indicelui aerulului la CalitateaAerului
- // int limita_inferioara_aer = 150000;   // Limita inferioara calitate aer exterior
-  //int limita_superioara_aer = 300000;  // Limita superioara calitate aer exterior
-  int limita_inferioara_aer = 10000;   // Limita inferioara calitate aer interior
-  int limita_superioara_aer = 250000;  // Limita superioara calitate aer interior
 
   Serial.println(referinta_aer);
-if (referinta_aer > limita_superioara_aer) indice_aer = 75 ; 
-
-
-if (referinta_aer < limita_superioara_aer && referinta_aer > limita_inferioara_aer) indice_aer = (((referinta_aer-limita_superioara_aer)/(limita_superioara_aer-limita_inferioara_aer))*75) ; 
-
-
-if (referinta_aer < limita_inferioara_aer) indice_aer = 0 ; 
-
-
+indice_aer = (((referinta_aer + (3*bme.gas_resistance))/4) /200000)*75;
   Serial.println(indice_aer);
+
+
+
+
+
 
 //indice_aer = (0.75/(limita_superioara_aer-limita_inferioara_aer)*referinta_aer -(limita_inferioara_aer*(0.75/(limita_superioara_aer-limita_inferioara_aer))))*100;
 
