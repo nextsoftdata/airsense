@@ -25,11 +25,41 @@ Adafruit_BME680 bme; // I2C
 
 void setup(){
 
- Serial.begin(19200);
+ Serial.begin(4800);
 
-gprsSerial.begin(19200);
-gprsSerial.flush();
-// comanda GPRS  
+gprsSerial.begin(4800);
+
+#ifdef AVR
+  Wire.begin();
+#else
+  Wire1.begin(); // initializare conexiune cu interfata ceas RTC
+#endif
+
+  rtc.begin(); // inceput rtc
+
+
+
+  while (!Serial);
+  Serial.println(F("BME680 test"));
+  
+    Wire.begin();
+  if (!bme.begin()) {
+    Serial.println("Could not find a valid BME680 sensor, check wiring!");
+    while (1);
+  } else Serial.println("Found a sensor");
+ 
+
+  // Setare oversampling senzor si initializare filtru
+  bme.setTemperatureOversampling(BME680_OS_8X);
+  bme.setHumidityOversampling(BME680_OS_2X);
+  bme.setPressureOversampling(BME680_OS_4X);
+  bme.setIIRFilterSize(BME680_FILTER_SIZE_3);
+   bme.setGasHeater(320, 150); // 320*C for 150 ms
+ CalculeazaReferintaAer(); 
+
+ // initializare serviciu http
+
+   
   gprsSerial.println("AT+CGATT?");
   delay(1000);
   toSerial();
@@ -50,25 +80,6 @@ gprsSerial.flush();
   delay(2000);
   toSerial();
 
-  while (!Serial);
-  Serial.println(F("BME680 test"));
-  
-    Wire.begin();
-  if (!bme.begin()) {
-    Serial.println("Could not find a valid BME680 sensor, check wiring!");
-    while (1);
-  } else Serial.println("Found a sensor");
- 
-
-  // Setare oversampling senzor si initializare filtru
-  bme.setTemperatureOversampling(BME680_OS_8X);
-  bme.setHumidityOversampling(BME680_OS_2X);
-  bme.setPressureOversampling(BME680_OS_4X);
-  bme.setIIRFilterSize(BME680_FILTER_SIZE_3);
-   bme.setGasHeater(320, 150); // 320*C for 150 ms
- CalculeazaReferintaAer(); 
-
- 
 
 }
 
@@ -95,8 +106,10 @@ String CalculeazaCalitateAer(float score){
   else if (score >=  51 && score <= 150 ) TextCalitateAer += "Moderata";
   else if (score >=  00 && score <=  50 ) TextCalitateAer += "Buna";
   return TextCalitateAer;
-}
 
+
+
+}
 
 
 
@@ -183,33 +196,51 @@ Serial.println(oraValue);
 
 
   //Formare parametrii pentru metoda GET a scriptului ScriereInBazaDeDate.php de pe server
-String string1 = "AT+HTTPPARA=\"URL\""  ;  
+String string1 = "AT+HTTPPARA=\"URL\"";  
 String string2 = ",";
-String string3 = "\"http://www.airsense.000webhostapp.com/ScriereInBazaDeDate.php?data=";
-String string4 = "&ora=";
-String string5 = "&temperatura=";
-String string6 = "&presiune=";
-String string7 = "&umiditate=";
-String string8 = "&rezistenta=";
-String string9 = "&calitateaer=";
+String string3 = "\"http://www.airsense.ml/ScriereInBazaDeDate.php?data=";
 
-
+//String string4 = "&ora=";
+//String string5 = "&temperatura=";
+//String string6 = "&presiune=";
+//String string7 = "&umiditate=";
+//String string8 = "&rezistenta=";
+// String string9 = "&calitateaer=";
 String string10 = "\"";
-String string11 = string1 + string2 + string3 + dataValue + string4 + oraValue + string5 + temperatura_curenta + string6 + presiunea_curenta + string7 + umiditatea_curenta+ string8 + rezistenta_curenta+ string9 + calitate_aer + string10;
-  
-  delay(1000);
 
- delay(3000);
-//TRIMITERE REQEST HTTP parametrizat cu datele care se scriu in baza de date//
+  Serial.println(string1);
+ Serial.println(string2);
+  Serial.println("Now string 3");
+  Serial.println(string3);
+    Serial.println("Now string 10");
+    Serial.println(string10);
+    
+  Serial.println(dataValue);
+
+  
+String string11 = string1 + string2 + string3 + dataValue + string10;
+
+
+//String string11 = string1 + string2 + string3 + dataValue + string4 + oraValue + string5 + String(temperatura_curenta) + string6 + String(presiunea_curenta) + string7 + String(umiditatea_curenta)+ string8 + String(rezistenta_curenta)+ string9 + calitate_aer + string10;
+      Serial.flush();
+  Serial.println(string11);
+gprsSerial.flush();
+          gprsSerial.println("AT+HTTPINIT");
+   delay(1000); 
+   toSerial();
+   
+gprsSerial.flush();
 gprsSerial.println(string11);
    delay(1000);
    toSerial();
+         gprsSerial.flush();
+
+
    
    gprsSerial.println("AT+HTTPACTION=0");
    delay(1000);
    toSerial();
-
-  
+   gprsSerial.flush();
   }
 
 
@@ -217,6 +248,8 @@ gprsSerial.println(string11);
 {
   while(gprsSerial.available()!=0)
   {
+
+  Serial.flush();
     Serial.write(gprsSerial.read());
   }
 
