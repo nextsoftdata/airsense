@@ -16,7 +16,7 @@ RTC_DS1307 rtc;    // Creeare obiect rtc pentru ceasul in timp real
 float pondere_umiditate = 0.25; // so hum effect is 25% of the total air quality score
 float pondere_aer = 0.75; // so gas effect is 75% of the total air quality score
 float indice_umiditate, indice_aer;
-float referinta_aer = 250000;
+float referinta_aer=150000;
 float referinta_umiditate = 40;
 int   CalculeazaReferintaAer_index = 0;
 
@@ -24,6 +24,7 @@ int   CalculeazaReferintaAer_index = 0;
 Adafruit_BME680 bme; // I2C
 
 void setup(){
+  
   Serial.begin(115200);
   while (!Serial);
   Serial.println(F("BME680 test"));
@@ -133,8 +134,8 @@ void loop()
   Serial.print(bme.humidity);
   Serial.println(" %");
   Serial.print("RezistentaAer = ");
-  Serial.print(bme.gas_resistance / 1000.0);
-  Serial.println(" KOhms");
+  Serial.print(bme.gas_resistance);
+  Serial.println(" Ohms");
   Serial.print("Altitudine aproximativa = ");
   Serial.print(bme.readAltitude(PRESIUNE_LA_NIVELUL_MARII));
   Serial.println(" m");
@@ -152,9 +153,9 @@ void loop()
   }
   */
   
-     delay(2000);
+     //delay(2000);
      DateTime now = rtc.now();  // citire informatii de la Real time clock
-
+/*
 //declaratii variabile pentru data si timp.
 String anul=String(now.year(),DEC);
 String luna=String(now.month(),DEC);
@@ -171,7 +172,7 @@ Serial.println(dataValue);
 Serial.println(oraValue);
   delay(3000);
 
- 
+ */
  float umiditatea_curenta = bme.readHumidity();
       float presiunea_curenta = bme.readPressure();
   float temperatura_curenta = bme.temperature;
@@ -191,12 +192,24 @@ Serial.println(oraValue);
   }
   
   //Calculeaza contributia indicelui aerulului la CalitateaAerului
-  int limita_inferioara_aer = 10000;   // Limita calitate inferioara aer
-  int limita_superioara_aer = 20000;  // Limita calitate superioara aer 
-  if (referinta_aer > limita_superioara_aer) referinta_aer = limita_superioara_aer; 
-  if (referinta_aer < limita_inferioara_aer) referinta_aer = limita_inferioara_aer;
-  indice_aer = (0.75/(limita_superioara_aer-limita_inferioara_aer)*referinta_aer -(limita_inferioara_aer*(0.75/(limita_superioara_aer-limita_inferioara_aer))))*100;
+ // int limita_inferioara_aer = 150000;   // Limita inferioara calitate aer exterior
+  //int limita_superioara_aer = 300000;  // Limita superioara calitate aer exterior
+  int limita_inferioara_aer = 10000;   // Limita inferioara calitate aer interior
+  int limita_superioara_aer = 250000;  // Limita superioara calitate aer interior
 
+  Serial.println(referinta_aer);
+if (referinta_aer > limita_superioara_aer) indice_aer = 75 ; 
+
+
+if (referinta_aer < limita_superioara_aer && referinta_aer > limita_inferioara_aer) indice_aer = (((referinta_aer-limita_superioara_aer)/(limita_superioara_aer-limita_inferioara_aer))*75) ; 
+
+
+if (referinta_aer < limita_inferioara_aer) indice_aer = 0 ; 
+
+
+  Serial.println(indice_aer);
+
+//indice_aer = (0.75/(limita_superioara_aer-limita_inferioara_aer)*referinta_aer -(limita_inferioara_aer*(0.75/(limita_superioara_aer-limita_inferioara_aer))))*100;
 
 
 
@@ -206,7 +219,7 @@ Serial.println(oraValue);
   Serial.println("Calitatea aerului = "+String(calitate_aer,1)+"% derived from 25% of Humidity reading and 75% of Gas reading - 100% is good quality air");
   Serial.println("Valoarea umiditatii raportat la 100 a fost : "+String(indice_umiditate/100)+" din 0.25");
   Serial.println("Valoarea aerului raportat la 100 a fost : "+String(indice_aer/100)+" din 0.75");
-  if (bme.readGas() < 9000) Serial.println("***** Calitate redusa a aerului *****");
+  if (bme.readGas() < 120000) Serial.println("***** Calitate redusa a aerului *****");
   Serial.println();
   if ((CalculeazaReferintaAer_index++)%10==0) CalculeazaReferintaAer(); 
   Serial.println(CalculeazaCalitateAer(calitate_aer));

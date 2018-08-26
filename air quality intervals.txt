@@ -5,3 +5,12 @@
 37395 - 27080 - worse ?
 18761 - 13591 - very bad ?
 9008 - 8371 - can’t see the exit ?
+
+
+500000 - 300000 - good?
+300000 - 200000 - average ?
+200000 - 100000 - little bad ?
+100000 - 50000 - bad ?
+50000 - 30000 - worse ?
+30000 - 20000 - very bad ?
+20000 - 10000- can’t see the exit ?
