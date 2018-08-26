@@ -2,9 +2,9 @@
 <?php
 //parametrii conectare la baza de date
 $servername = "localhost";
-$username = "id1592623_nextflood";
-$password = "nextflood";
-$dbname = "id1592623_nextflood";
+$username = "id6882721_airsense_user";
+$password = "lakelake";
+$dbname = "id6882721_airsense";
 
 //conectare baza de date
 try {
@@ -14,14 +14,23 @@ try {
 //transmitere parametrii de la requestul http la php
 	$data=htmlspecialchars($_GET["data"]);
 	$ora=htmlspecialchars($_GET["ora"]);
-	$nivel=htmlspecialchars($_GET["nivel"]);
+	$temperatura=htmlspecialchars($_GET["temperatura"]);
+	$presiune=htmlspecialchars($_GET["presiune"]);
+	$umiditate=htmlspecialchars($_GET["umiditate"]);	
+	$rezistenta=htmlspecialchars($_GET["rezistenta"]);
+	$calitateaer=htmlspecialchars($_GET["calitateaer"]);	
+	
 echo $data;
 echo $ora;
-echo $nivel;
+echo $temperatura;
+echo $presiune;
+echo $umiditate;
+echo $rezistenta;
+echo $calitateaer;
 
 //inserare in baza de date a unei noi inregistrari cu parametrii primiti.
-    $sql = "INSERT INTO nextflooddb (data,ora,nivel)
-    VALUES ('$data', '$ora', '$nivel')";
+    $sql = "INSERT INTO airsense (data,ora,temperatura,presiune,umiditate,rezistenta,calitateaer)
+    VALUES ('$data', '$ora', '$temperatura', '$presiune', '$umiditate', '$rezistenta', '$calitateaer')";
     
     $conn->exec($sql);
     echo "Inregistrare realizata cu succes";
