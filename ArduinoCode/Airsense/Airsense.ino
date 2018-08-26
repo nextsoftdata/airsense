@@ -10,20 +10,20 @@
 #define BME_MISO 12
 #define BME_MOSI 11
 #define BME_CS 10
-#define SEALEVELPRESSURE_HPA (1013.25)
+#define PRESIUNE_LA_NIVELUL_MARII (1013.25)
 
 Adafruit_BME680 bme; // I2C
 SoftwareSerial gprsSerial(7, 8);
 
 RTC_DS1307 rtc;    // Creeare obiect rtc pentru ceasul in timp real
 
-float hum_weighting = 0.25; // so hum effect is 25% of the total air quality score
-float gas_weighting = 0.75; // so gas effect is 75% of the total air quality score
+float pondere_umiditate = 0.25; // so hum effect is 25% of the total air quality score
+float pondere_aer = 0.75; // so gas effect is 75% of the total air quality score
 
-float hum_score, gas_score;
-float gas_reference = 250000;
-float hum_reference = 40;
-int   getgasreference_count = 0;
+float indice_umiditate, indice_aer;
+float referinta_aer = 250000;
+float referinta_umiditate = 40;
+int   CalculeazaReferintaAer_index = 0;
 
 
 
@@ -57,7 +57,7 @@ gprsSerial.begin(9600);
   }
 
 
-  // Set up oversampling and filter initialization
+  // Setare oversampling senzor si initializare filtru
   bme.setTemperatureOversampling(BME680_OS_8X);
   bme.setHumidityOversampling(BME680_OS_2X);
   bme.setPressureOversampling(BME680_OS_4X);
@@ -97,7 +97,7 @@ gprsSerial.begin(9600);
 
 
 
-   GetGasReference(); 
+   CalculeazaReferintaAer(); 
 }
 
 void loop()
@@ -108,27 +108,27 @@ void loop()
    toSerial();
 
   if (! bme.performReading()) {
-    Serial.println("Failed to perform reading :(");
+    Serial.println("Nu se pot realiza citiri de pe senzor :(");
     return;
   }
-  Serial.print("Temperature = ");
+  Serial.print("Temperatura = ");
   Serial.print(bme.temperature);
   Serial.println(" *C");
 
-  Serial.print("Pressure = ");
+  Serial.print("Presiunea = ");
   Serial.print(bme.pressure / 100.0);
   Serial.println(" hPa");
 
-  Serial.print("Humidity = ");
+  Serial.print("Umiditatea = ");
   Serial.print(bme.humidity);
   Serial.println(" %");
 
-  Serial.print("Gas = ");
+  Serial.print("RezistentaAer = ");
   Serial.print(bme.gas_resistance / 1000.0);
   Serial.println(" KOhms");
 
-  Serial.print("Approx. Altitude = ");
-  Serial.print(bme.readAltitude(SEALEVELPRESSURE_HPA));
+  Serial.print("Altitudine aproximativa = ");
+  Serial.print(bme.readAltitude(PRESIUNE_LA_NIVELUL_MARII));
   Serial.println(" m");
 
   Serial.println();
@@ -156,12 +156,12 @@ Serial.println(oraValue);
    
  
 
-//Formare parametrii pentru metoda GET a scriptului DBWrite.php de pe server
+//Formare parametrii pentru metoda GET a scriptului ScriereInBazaDeDate.php de pe server
 String stringOne = "AT+HTTPPARA=\"URL\""  ;  
 
 String stringTwo = ",";
 
-String stringThree = "\"http://www.nextflood.tk/DBWrite.php?data=";
+String stringThree = "\"http://www.airsense.ml/ScriereInBazaDeDate.php?data=";
 
 String stringFour = "&ora=";
 
@@ -198,36 +198,36 @@ String cm="cm";
 
 
   //Calculate humidity contribution to IAQ index
-  float current_humidity = bme.readHumidity();
-  if (current_humidity >= 38 && current_humidity <= 42)
-    hum_score = 0.25*100; // Humidity +/-5% around optimum 
+  float umiditatea_curenta = bme.readHumidity();
+  if (umiditatea_curenta >= 38 && umiditatea_curenta <= 42)
+    indice_umiditate = 0.25*100; // Humidity +/-5% around optimum 
   else
   { //sub-optimal
-    if (current_humidity < 38) 
-      hum_score = 0.25/hum_reference*current_humidity*100;
+    if (umiditatea_curenta < 38) 
+      indice_umiditate = 0.25/referinta_umiditate*umiditatea_curenta*100;
     else
     {
-      hum_score = ((-0.25/(100-hum_reference)*current_humidity)+0.416666)*100;
+      indice_umiditate = ((-0.25/(100-referinta_umiditate)*umiditatea_curenta)+0.416666)*100;
     }
   }
   
-  //Calculate gas contribution to IAQ index
-  int gas_lower_limit = 5000;   // Bad air quality limit
-  int gas_upper_limit = 50000;  // Good air quality limit 
-  if (gas_reference > gas_upper_limit) gas_reference = gas_upper_limit; 
-  if (gas_reference < gas_lower_limit) gas_reference = gas_lower_limit;
-  gas_score = (0.75/(gas_upper_limit-gas_lower_limit)*gas_reference -(gas_lower_limit*(0.75/(gas_upper_limit-gas_lower_limit))))*100;
+  //Calculeaza contributia indicelui aerulului la CalitateaAerului
+  int limita_inferioara_aer = 5000;   // Limita calitate inferioara aer
+  int limita_superioara_aer = 50000;  // Limita calitate superioara aer 
+  if (referinta_aer > limita_superioara_aer) referinta_aer = limita_superioara_aer; 
+  if (referinta_aer < limita_inferioara_aer) referinta_aer = limita_inferioara_aer;
+  indice_aer = (0.75/(limita_superioara_aer-limita_inferioara_aer)*referinta_aer -(limita_inferioara_aer*(0.75/(limita_superioara_aer-limita_inferioara_aer))))*100;
   
   //Combine results for the final IAQ index value (0-100% where 100% is good quality air)
-  float air_quality_score = hum_score + gas_score;
+  float calitate_aer = indice_umiditate + indice_aer;
 
-  Serial.println("Air Quality = "+String(air_quality_score,1)+"% derived from 25% of Humidity reading and 75% of Gas reading - 100% is good quality air");
-  Serial.println("Humidity element was : "+String(hum_score/100)+" of 0.25");
-  Serial.println("     Gas element was : "+String(gas_score/100)+" of 0.75");
-  if (bme.readGas() < 120000) Serial.println("***** Poor air quality *****");
+  Serial.println("Calitatea aerului = "+String(calitate_aer,1)+"% derived from 25% of Humidity reading and 75% of Gas reading - 100% is good quality air");
+  Serial.println("Valoarea umiditatii raportat la 100 a fost : "+String(indice_umiditate/100)+" din 0.25");
+  Serial.println("Valoarea aerului raportat la 100 a fost : "+String(indice_aer/100)+" din 0.75");
+  if (bme.readGas() < 120000) Serial.println("***** Calitate redusa a aerului *****");
   Serial.println();
-  if ((getgasreference_count++)%10==0) GetGasReference(); 
-  Serial.println(CalculateIAQ(air_quality_score));
+  if ((CalculeazaReferintaAer_index++)%10==0) CalculeazaReferintaAer(); 
+  Serial.println(CalculeazaCalitateAer(calitate_aer));
   Serial.println("------------------------------------------------");
   delay(2000);
 
@@ -249,27 +249,27 @@ void toSerial()
 
 
 
-String CalculateIAQ(float score){
-  String IAQ_text = "Air quality is ";
+String CalculeazaCalitateAer(float score){
+  String TextCalitateAer = "Calitatea Aerului este ";
   score = (100-score)*5;
-  if      (score >= 301)                  IAQ_text += "Hazardous";
-  else if (score >= 201 && score <= 300 ) IAQ_text += "Very Unhealthy";
-  else if (score >= 176 && score <= 200 ) IAQ_text += "Unhealthy";
-  else if (score >= 151 && score <= 175 ) IAQ_text += "Unhealthy for Sensitive Groups";
-  else if (score >=  51 && score <= 150 ) IAQ_text += "Moderate";
-  else if (score >=  00 && score <=  50 ) IAQ_text += "Good";
-  return IAQ_text;
+  if      (score >= 301)                  TextCalitateAer += "Periculoasa";
+  else if (score >= 201 && score <= 300 ) TextCalitateAer += "Foarte slaba";
+  else if (score >= 176 && score <= 200 ) TextCalitateAer += "Rea";
+  else if (score >= 151 && score <= 175 ) TextCalitateAer += "Nepotrivita";
+  else if (score >=  51 && score <= 150 ) TextCalitateAer += "Moderata";
+  else if (score >=  00 && score <=  50 ) TextCalitateAer += "Buna";
+  return TextCalitateAer;
 }
 
 
 
 
-void GetGasReference(){
+void CalculeazaReferintaAer(){
   // Now run the sensor for a burn-in period, then use combination of relative humidity and gas resistance to estimate indoor air quality as a percentage.
-  Serial.println("Getting a new gas reference value");
-  int readings = 10;
-  for (int i = 0; i <= readings; i++){ // read gas for 10 x 0.150mS = 1.5secs
-    gas_reference += bme.readGas();
+  Serial.println("Citire valoare de referinta noua pentru aer");
+  int citiriSenzor = 10;
+  for (int i = 0; i <= citiriSenzor; i++){ // read gas for 10 x 0.150mS = 1.5secs
+    referinta_aer += bme.readGas();
   }
-  gas_reference = gas_reference / readings;
+  referinta_aer = referinta_aer / citiriSenzor;
 }
