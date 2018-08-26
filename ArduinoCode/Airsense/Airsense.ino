@@ -27,10 +27,6 @@ void setup(){
 
  Serial.begin(19200);
 
-
-
-
-
 gprsSerial.begin(19200);
 gprsSerial.flush();
 // comanda GPRS  
@@ -189,25 +185,19 @@ Serial.println(oraValue);
   //Formare parametrii pentru metoda GET a scriptului ScriereInBazaDeDate.php de pe server
 String string1 = "AT+HTTPPARA=\"URL\""  ;  
 String string2 = ",";
-String string3 = "\"http://www.airsense.ml/ScriereInBazaDeDate.php?data=";
+String string3 = "\"http://www.airsense.000webhostapp.com/ScriereInBazaDeDate.php?data=";
 String string4 = "&ora=";
 String string5 = "&temperatura=";
 String string6 = "&presiune=";
 String string7 = "&umiditate=";
 String string8 = "&rezistenta=";
 String string9 = "&calitateaer=";
-dataValue=1;
-oraValue=2;
-temperatura_curenta=3;
-presiunea_curenta=4;
-umiditatea_curenta=6;
-rezistenta_curenta=7;
-calitate_aer=8;
+
 
 String string10 = "\"";
 String string11 = string1 + string2 + string3 + dataValue + string4 + oraValue + string5 + temperatura_curenta + string6 + presiunea_curenta + string7 + umiditatea_curenta+ string8 + rezistenta_curenta+ string9 + calitate_aer + string10;
+  
   delay(1000);
-Serial.println(string11);
 
  delay(3000);
 //TRIMITERE REQEST HTTP parametrizat cu datele care se scriu in baza de date//
