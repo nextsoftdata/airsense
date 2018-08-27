@@ -10,10 +10,10 @@
 #define PRESIUNE_LA_NIVELUL_MARII (1013.25)
 
 SoftwareSerial gprsSerial(7, 8);
-
-
 RTC_DS1307 rtc;    // Creeare obiect rtc pentru ceasul in timp real
-float pondere_umiditate = 0.25; // so hum effect is 25% of the total air quality score
+Adafruit_BME680 bme; // I2C
+
+  float pondere_umiditate = 0.25; // so hum effect is 25% of the total air quality score
 float pondere_aer = 0.75; // so gas effect is 75% of the total air quality score
 float indice_umiditate, indice_aer;
 float referinta_aer;
@@ -21,12 +21,14 @@ float referinta_umiditate = 40;
 int   CalculeazaReferintaAer_index = 0;
 
 
-Adafruit_BME680 bme; // I2C
+void setup()
 
-void setup(){
 
- Serial.begin(4800);
+{
 
+
+
+Serial.begin(4800); 
 gprsSerial.begin(4800);
 
 #ifdef AVR
@@ -36,17 +38,50 @@ gprsSerial.begin(4800);
 #endif
 
   rtc.begin(); // inceput rtc
+//Pentru ajustare ceas dupa ora sistemului se scot comentariile de pe linia de mai jos.
+  // rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+//Pentru ajustare ceas dupa parametrii introdusi se scot comentariile de pe linia de mai jos si se modifica parametrii.
+//rtc.adjust(DateTime(2018, 8, 27, 20, 58, 0));
 
-
-
-  while (!Serial);
-  Serial.println(F("BME680 test"));
+  Serial.println("Initializare sistem AirSense GSM+GPRS+RTC");
+  gprsSerial.flush();
+  Serial.flush();
   
-    Wire.begin();
-  if (!bme.begin()) {
-    Serial.println("Could not find a valid BME680 sensor, check wiring!");
-    while (1);
-  } else Serial.println("Found a sensor");
+  // comanda GPRS  
+  gprsSerial.println("AT+CGATT?");
+  delay(1000);
+  toSerial();
+
+  // setari retea
+  gprsSerial.println("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"");
+  delay(1000);
+  toSerial();
+
+  //setari accesspoint pentru internet
+  gprsSerial.println("AT+SAPBR=3,1,\"APN\",\"net\"");
+  delay(1000);
+  toSerial();
+
+//Gprs
+  gprsSerial.println("AT+CGATT=1");
+  delay(100);
+  toSerial();
+
+    //setari GPRS
+  gprsSerial.println("AT+SAPBR=1,1");
+  delay(2000);
+  toSerial();
+
+
+
+ while (!Serial);
+Serial.println(F("BME680 test"));
+  
+ Wire.begin();
+if (!bme.begin()) {
+Serial.println("Could not find a valid BME680 sensor, check wiring!");
+ while (1);
+ } else Serial.println("Found a sensor");
  
 
   // Setare oversampling senzor si initializare filtru
@@ -57,64 +92,40 @@ gprsSerial.begin(4800);
    bme.setGasHeater(320, 150); // 320*C for 150 ms
  CalculeazaReferintaAer(); 
 
- // initializare serviciu http
-
-   
-  gprsSerial.println("AT+CGATT?");
-  delay(1000);
-  toSerial();
-  // setari retea
-  gprsSerial.println("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"");
-  delay(1000);
-  toSerial();
-//setari accesspoint pentru internet
-  gprsSerial.println("AT+SAPBR=3,1,\"APN\",\"net\"");
-  delay(1000);
-  toSerial();
-//Gprs
-  gprsSerial.println("AT+CGATT=1");
-  delay(100);
-  toSerial();
-    //setari GPRS
-  gprsSerial.println("AT+SAPBR=1,1");
-  delay(2000);
-  toSerial();
-
-
 }
 
 
 
-
-void CalculeazaReferintaAer(){
-  // Initializare si inca, then use combination of relative humidity and gas resistance to estimate indoor air quality as a percentage.
-  Serial.println("Citire valoare de referinta noua pentru aer");
-  int citiriSenzor = 10;
-  for (int i = 0; i <= citiriSenzor; i++){ // read gas for 10 x 0.150mS = 1.5secs
-    referinta_aer += bme.readGas();
-  }
-  referinta_aer = referinta_aer / citiriSenzor;
-}
-
-String CalculeazaCalitateAer(float score){
-  String TextCalitateAer = "Calitatea Aerului este ";
-  score = (100-score)*5;
-  if      (score >= 301)                  TextCalitateAer += "Periculoasa";
-  else if (score >= 201 && score <= 300 ) TextCalitateAer += "Foarte slaba";
-  else if (score >= 176 && score <= 200 ) TextCalitateAer += "Rea";
-  else if (score >= 151 && score <= 175 ) TextCalitateAer += "Nepotrivita";
-  else if (score >=  51 && score <= 150 ) TextCalitateAer += "Moderata";
-  else if (score >=  00 && score <=  50 ) TextCalitateAer += "Buna";
-  return TextCalitateAer;
-
-
-
-}
 
 
 
 void loop()
 {
+ // initializare serviciu http
+   gprsSerial.println("AT+HTTPINIT");
+   delay(200); 
+   toSerial();
+ 
+     DateTime now = rtc.now();  // citire informatii de la Real time clock
+
+  //declaratii variabile pentru data si timp.
+String anul=String(now.year(),DEC);
+String luna=String(now.month(),DEC);
+String ziua=String(now.day(),DEC);
+String ora=String(now.hour(),DEC);
+String minutul=String(now.minute(),DEC);
+String secunda=String(now.second(),DEC);
+String dataValue=anul+"-"+luna+"-"+ziua;
+String oraValue=ora+minutul+secunda+".00000";
+
+//afisare data pentru debug
+Serial.println(dataValue);
+//afisare ora pentru debug
+Serial.println(oraValue);
+  delay(3000);
+  
+
+
 
 
   Serial.print("Temperatura = ");
@@ -134,11 +145,14 @@ void loop()
   Serial.println(" m");
   Serial.println();
 
-  
- float umiditatea_curenta = bme.readHumidity();
+
+
+
+     float umiditatea_curenta = bme.readHumidity();
       float presiunea_curenta = bme.readPressure();
   float temperatura_curenta = bme.temperature;
  float rezistenta_curenta = bme.gas_resistance;
+ 
 
   //Calculate humidity contribution to IAQ index
   if (umiditatea_curenta >= 38 && umiditatea_curenta <= 42)
@@ -173,74 +187,43 @@ indice_aer = (((referinta_aer + (3*bme.gas_resistance))/4) /200000)*75;
   if ((CalculeazaReferintaAer_index++)%10==0) CalculeazaReferintaAer(); 
   Serial.println(CalculeazaCalitateAer(calitate_aer));
   Serial.println("------------------------------------------------");
-  delay(2000);
+delay(2000);
 
-    delay(2000);
-     DateTime now = rtc.now();  // citire informatii de la Real time clock
 
-//declaratii variabile pentru data si timp.
-String anul=String(now.year(),DEC);
-String luna=String(now.month(),DEC);
-String ziua=String(now.day(),DEC);
-String ora=String(now.hour(),DEC);
-String minutul=String(now.minute(),DEC);
-String secunda=String(now.second(),DEC);
-String dataValue=anul+"-"+luna+"-"+ziua;
-String oraValue=ora+minutul+secunda+".00000";
+     
 
-//afisare data pentru debug
-Serial.println(dataValue);
-//afisare ora pentru debug
-Serial.println(oraValue);
-  //delay(3000);
 
 
   //Formare parametrii pentru metoda GET a scriptului ScriereInBazaDeDate.php de pe server
-String string1 = "AT+HTTPPARA=\"URL\"";  
+String string1 = "AT+HTTPPARA=\"URL\""  ; 
 String string2 = ",";
-String string3 = "\"http://www.airsense.ml/ScriereInBazaDeDate.php?data=";
+String string3 = "\"http://www.airsense.ml/ScriereBD.php?data=\"";
 
-//String string4 = "&ora=";
-//String string5 = "&temperatura=";
-//String string6 = "&presiune=";
-//String string7 = "&umiditate=";
-//String string8 = "&rezistenta=";
-// String string9 = "&calitateaer=";
+String string4 = "&ora=";
+String string5 = "&temperatura=";
+String string6 = "&presiune=";
+String string7 = "&umiditate=";
+String string8 = "&rezistenta=";
+String string9 = "&calitateaer=";
 String string10 = "\"";
 
-  Serial.println(string1);
- Serial.println(string2);
-  Serial.println("Now string 3");
-  Serial.println(string3);
-    Serial.println("Now string 10");
-    Serial.println(string10);
+          Serial.println("String 1 is:"+string1);
+    delay(2000);
+
     
-  Serial.println(dataValue);
-
   
-String string11 = string1 + string2 + string3 + dataValue + string10;
-
-
-//String string11 = string1 + string2 + string3 + dataValue + string4 + oraValue + string5 + String(temperatura_curenta) + string6 + String(presiunea_curenta) + string7 + String(umiditatea_curenta)+ string8 + String(rezistenta_curenta)+ string9 + calitate_aer + string10;
-      Serial.flush();
-  Serial.println(string11);
-gprsSerial.flush();
-          gprsSerial.println("AT+HTTPINIT");
-   delay(1000); 
-   toSerial();
-   
-gprsSerial.flush();
+String string11 = string1 + string2 + string3 + dataValue + string4 + oraValue + string5 + String(temperatura_curenta) + string6 + String(presiunea_curenta) + string7 + String(umiditatea_curenta)+ string8 + String(rezistenta_curenta)+ string9 + calitate_aer + string10;
+delay(2000);
 gprsSerial.println(string11);
-   delay(1000);
+delay(2000);
+ 
    toSerial();
-         gprsSerial.flush();
+delay(2000);
 
-
-   
    gprsSerial.println("AT+HTTPACTION=0");
-   delay(1000);
+delay(2000);
    toSerial();
-   gprsSerial.flush();
+   delay(2000);
   }
 
 
@@ -248,11 +231,35 @@ gprsSerial.println(string11);
 {
   while(gprsSerial.available()!=0)
   {
-
-  Serial.flush();
     Serial.write(gprsSerial.read());
   }
 
 
   
   }
+
+
+  void CalculeazaReferintaAer(){
+  // Initializare si inca, then use combination of relative humidity and gas resistance to estimate indoor air quality as a percentage.
+  Serial.println("Citire valoare de referinta noua pentru aer");
+  int citiriSenzor = 10;
+  for (int i = 0; i <= citiriSenzor; i++){ // read gas for 10 x 0.150mS = 1.5secs
+    referinta_aer += bme.readGas();
+  }
+  referinta_aer = referinta_aer / citiriSenzor;
+}
+
+String CalculeazaCalitateAer(float score){
+  String TextCalitateAer = "Calitatea Aerului este ";
+  score = (100-score)*5;
+  if      (score >= 301)                  TextCalitateAer += "Periculoasa";
+  else if (score >= 201 && score <= 300 ) TextCalitateAer += "Foarte slaba";
+  else if (score >= 176 && score <= 200 ) TextCalitateAer += "Rea";
+  else if (score >= 151 && score <= 175 ) TextCalitateAer += "Nepotrivita";
+  else if (score >=  51 && score <= 150 ) TextCalitateAer += "Moderata";
+  else if (score >=  00 && score <=  50 ) TextCalitateAer += "Buna";
+  return TextCalitateAer;
+
+
+
+}
