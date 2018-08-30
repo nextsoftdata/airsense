@@ -167,7 +167,7 @@ String string10 = "\"";
 
 
 
-String string11 = string1+ string2 + string3 + dataValue + string4 + oraValue + string5 + bme.temperature + string6 + (presiunea_curenta * 0.75006156130264) + string7 + bme.readHumidity()+ string8 + bme.gas_resistance+ string9 + String(calitate_aer,1) + string10;
+String string11 = string1+ string2 + string3 + dataValue + string4 + oraValue + string5 + bme.temperature + string6 + presiunea_curenta + string7 + bme.readHumidity()+ string8 + bme.gas_resistance+ string9 + String(calitate_aer,1) + string10;
 
     delay(1000);
   Serial.println(string11);

@@ -8,7 +8,7 @@
 #define BME_MISO 12
 #define BME_MOSI 11
 #define BME_CS 10
-#define SEALEVELPRESSURE_HPA (1013.25)
+
 
 SoftwareSerial gprsSerial(7, 8);
 RTC_DS1307 rtc;    // Creeare obiect rtc pentru ceasul in timp real
@@ -118,7 +118,7 @@ float referinta_umiditate = 40;
  
 
  float umiditatea_curenta = bme.readHumidity();
-     float presiunea_curenta = bme.readPressure()/100;
+     float presiunea_curenta = bme.readPressure();
 float temperatura_curenta = bme.temperature;
  float rezistenta_curenta = bme.gas_resistance;
 
@@ -167,7 +167,7 @@ String string10 = "\"";
 
 
 
-String string11 = string1+ string2 + string3 + dataValue + string4 + oraValue + string5 + bme.temperature + string6 + (presiunea_curenta * 0.75006156130264) + string7 + bme.readHumidity()+ string8 + bme.gas_resistance+ string9 + String(calitate_aer,1) + string10;
+String string11 = string1+ string2 + string3 + dataValue + string4 + oraValue + string5 + bme.temperature + string6 + bme.readPressure() + string7 + bme.readHumidity()+ string8 + bme.gas_resistance+ string9 + String(calitate_aer,1) + string10;
 
     delay(1000);
   Serial.println(string11);
@@ -196,3 +196,5 @@ void toSerial()
   }
   
 }
+
+

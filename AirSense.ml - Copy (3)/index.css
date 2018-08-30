@@ -1,0 +1,12 @@
+@charset "utf-8";
+/* CSS Document */
+.formatare
+{
+padding:3px;
+border:1px;
+border-color:#0BA0EA;
+border-style:inset;
+font-family:Georgia, "Times New Roman", Times, serif;
+background-color:#0BA0EA;
+}
+
